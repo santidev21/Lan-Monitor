@@ -57,9 +57,11 @@ public class MainWindow : Window
         var n = _m.Net;
         var devs = _m.Db.GetDevices();
         int unk = devs.Count(d => d.IsOnline && !d.IsKnown);
-        var gw = _m.Ping.Targets.Count > 1 ? _m.Ping.Targets[1] : null;
+        // Primer objetivo de internet (el índice 0 es el router). Lock: SetTargets puede correr en otro hilo.
+        LanMonitor.Core.Network.PingTarget? ext;
+        lock (_m.Ping.Targets) ext = _m.Ping.Targets.Count > 1 ? _m.Ping.Targets[1] : null;
         double? lat = null;
-        if (gw != null) lock (gw.Samples) lat = gw.Samples.LastOrDefault()?.RttMs;
+        if (ext != null) lock (ext.Samples) lat = ext.Samples.LastOrDefault()?.RttMs;
         int w = Math.Max(20, _app.Screen.Width - 4);
         string inet = $"Internet {(_m.InternetUp ? "●" : "✖ CAÍDO")} {(lat.HasValue ? lat.Value + "ms" : "")}".TrimEnd();
         string iface = n == null ? "sin red" : $"{n.InterfaceName} {n.LocalIp}";

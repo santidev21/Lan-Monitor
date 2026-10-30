@@ -5,6 +5,8 @@ Monitor de red para terminal (TUI, .NET 10 + Terminal.Gui v2). Corre **sin sudo*
 Ve qué dispositivos hay en tu red (y avisa de los desconocidos), mide ping, jitter, pérdida y velocidad, y te dice
 cuándo conviene reiniciar el módem.
 
+![Lan-Monitor dashboard](docs/lan-monitor.png)
+
 ## Requisitos
 - Linux (x64, arm64 o arm — sirve en una Raspberry Pi como monitor siempre encendido).
 - SDK de .NET 10, solo para compilar/instalar.

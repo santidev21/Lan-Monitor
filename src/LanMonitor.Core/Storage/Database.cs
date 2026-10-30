@@ -59,6 +59,13 @@ public class Database : IDisposable
         return 0;
     });
 
+    /// <summary>Cambia la MAC de un dispositivo conservando apodo, estado e historial (MAC privada rotada).</summary>
+    public void RenameMac(string oldMac, string newMac) => Run(c =>
+    {
+        c.Execute("UPDATE devices SET mac=@newMac WHERE mac=@oldMac; UPDATE connections SET mac=@newMac WHERE mac=@oldMac", new { oldMac, newMac });
+        return 0;
+    });
+
     public void AddConnection(string mac, bool online, DateTime time) => Run(c => c.Execute(
         "INSERT INTO connections(mac,time,online) VALUES(@mac,@t,@o)", new { mac, t = time.ToString("O"), o = online ? 1 : 0 }));
 
@@ -110,7 +117,7 @@ public class Database : IDisposable
     public void Purge(int retentionDays) => Run(c =>
     {
         var cut = DateTime.Now.AddDays(-retentionDays).ToString("O");
-        c.Execute("DELETE FROM events WHERE time<@cut; DELETE FROM ping_minutes WHERE minute<@cut; DELETE FROM connections WHERE time<@cut", new { cut });
+        c.Execute("DELETE FROM events WHERE time<@cut; DELETE FROM ping_minutes WHERE minute<@cut; DELETE FROM connections WHERE time<@cut; DELETE FROM devices WHERE is_random=1 AND is_known=0 AND is_online=0 AND last_seen<@cut", new { cut });
         return 0;
     });
 

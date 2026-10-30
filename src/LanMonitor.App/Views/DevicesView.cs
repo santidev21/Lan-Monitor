@@ -121,7 +121,7 @@ public class DevicesView : TabPage
             var sb = new StringBuilder();
             sb.AppendLine($"Nombre    : {d.DisplayName}   [{(d.IsKnown ? "Conocido" : "DESCONOCIDO")}]");
             sb.AppendLine($"Estado    : {(d.IsOnline ? "● online" : "○ offline")}   Ping: {(ping.HasValue ? ping.Value + " ms" : "-")}");
-            sb.AppendLine($"IP / MAC  : {d.Ip}  /  {d.Mac}{(d.IsRandomMac ? "  (MAC privada/aleatoria: puede cambiar)" : "")}");
+            sb.AppendLine($"IP / MAC  : {d.Ip}  /  {d.Mac}{(d.IsRandomMac ? "  (MAC privada: puede cambiar)" : "")}");
             sb.AppendLine($"Fabricante: {(d.Vendor == "" ? "-" : d.Vendor)}");
             sb.AppendLine($"Hostname  : {(d.Hostname == "" ? "-" : d.Hostname)}");
             sb.AppendLine($"Visto     : {d.FirstSeen:yyyy-MM-dd HH:mm} → {d.LastSeen:yyyy-MM-dd HH:mm}");

@@ -1,3 +1,4 @@
+using LanMonitor.Core.Alerts;
 using LanMonitor.Core.Config;
 using LanMonitor.Core.Events;
 using LanMonitor.Core.Models;
@@ -15,7 +16,7 @@ public class MonitorService
     public OuiLookup Oui { get; } = new();
     public PingMonitor Ping { get; } = new();
     public SpeedTester Speed { get; } = new();
-    public NetworkInfo? Net { get; private set; }
+    public NetworkInfo? Net { get; internal set; }
     public string PublicIp { get; private set; } = "";
     public bool InternetUp { get; private set; } = true;
     public bool Scanning { get; private set; }
@@ -38,6 +39,7 @@ public class MonitorService
     {
         Config = config; Db = db;
         _scanner = new DeviceScanner(Oui);
+        _firstRunEver = Db.GetDevices().Count == 0;
     }
 
     public async Task StartAsync(CancellationToken ct)
@@ -96,7 +98,7 @@ public class MonitorService
         finally { Scanning = false; _scanLock.Release(); StatusChanged?.Invoke(); DevicesUpdated?.Invoke(); }
     }
 
-    void MergeScan(List<ScanHit> hits)
+    internal void MergeScan(List<ScanHit> hits)
     {
         var net = Net!;
         var now = DateTime.Now;
@@ -108,12 +110,29 @@ public class MonitorService
         if (!string.IsNullOrEmpty(net.Mac) && net.LocalIp != null)
             all.Add(new ScanHit(net.LocalIp.ToString(), net.Mac, Environment.MachineName));
 
+        var hitMacs = all.Select(h => h.Mac).ToHashSet();
+
         foreach (var hit in all)
         {
             seen.Add(hit.Mac);
             _missed[hit.Mac] = 0;
             var fresh = _scanner.ToDevice(hit, net);
             fresh.IsSelf = hit.Mac == net.Mac;
+
+            // MAC privada rotada: mismo hostname y un único candidato offline => es el mismo equipo.
+            if (!stored.ContainsKey(hit.Mac) && fresh.IsRandomMac && !string.IsNullOrWhiteSpace(fresh.Hostname))
+            {
+                var cands = stored.Values.Where(x => x.IsRandomMac && !hitMacs.Contains(x.Mac)
+                    && string.Equals(x.Hostname, fresh.Hostname, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (cands.Count == 1)
+                {
+                    var old = cands[0];
+                    Db.RenameMac(old.Mac, hit.Mac);
+                    stored.Remove(old.Mac); _missed.Remove(old.Mac);
+                    old.Mac = hit.Mac; old.IsOnline = false;
+                    stored[hit.Mac] = old;
+                }
+            }
 
             if (stored.TryGetValue(hit.Mac, out var d))
             {
@@ -191,23 +210,27 @@ public class MonitorService
         }
     }
 
-    void CheckInternet()
+    static List<PingSample> Snapshot(PingTarget t) { lock (t.Samples) return t.Samples.ToList(); }
+
+    IReadOnlyList<IReadOnlyList<PingSample>> ExternalSamples()
     {
         PingTarget[] ext;
         lock (Ping.Targets) ext = Ping.Targets.Skip(1).ToArray();
-        if (ext.Length == 0) return;
-        // Caído = los últimos 4 pings de TODOS los objetivos externos fallaron.
-        bool down = ext.All(t => { lock (t.Samples) return t.Samples.Count >= 4 && t.Samples.TakeLast(4).All(s => s.RttMs == null); });
-        bool up = ext.Any(t => { lock (t.Samples) return t.Samples.Count > 0 && t.Samples[^1].RttMs != null; });
-        if (InternetUp && down)
+        return ext.Select(t => (IReadOnlyList<PingSample>)Snapshot(t)).ToList();
+    }
+
+    void CheckInternet()
+    {
+        switch (AlertRules.InternetTransition(InternetUp, ExternalSamples()))
         {
-            InternetUp = false;
-            Raise(EventKind.InternetDown, "Internet caído: " + Diagnose(), null, notify: true);
-        }
-        else if (!InternetUp && up)
-        {
-            InternetUp = true;
-            Raise(EventKind.InternetRestored, "Internet restaurado", null, notify: true);
+            case EventKind.InternetDown:
+                InternetUp = false;
+                Raise(EventKind.InternetDown, "Internet caído: " + Diagnose(), null, notify: true);
+                break;
+            case EventKind.InternetRestored:
+                InternetUp = true;
+                Raise(EventKind.InternetRestored, "Internet restaurado", null, notify: true);
+                break;
         }
     }
 
@@ -216,11 +239,7 @@ public class MonitorService
     {
         PingTarget? gw;
         lock (Ping.Targets) gw = Ping.Targets.FirstOrDefault();
-        if (gw == null) return "sin datos";
-        bool gwOk;
-        lock (gw.Samples) gwOk = gw.Samples.TakeLast(3).Any(s => s.RttMs != null);
-        return gwOk ? "el router responde pero no hay salida: problema del proveedor (ISP)"
-                    : "no responde el router: problema en tu WiFi/LAN";
+        return AlertRules.Diagnose(gw == null ? null : Snapshot(gw));
     }
 
     void CheckLatency()
@@ -230,14 +249,10 @@ public class MonitorService
         lock (Ping.Targets) ext = Ping.Targets.Skip(1).ToArray();
         foreach (var t in ext)
         {
-            List<double> last;
-            lock (t.Samples) last = t.Samples.TakeLast(10).Where(s => s.RttMs != null).Select(s => s.RttMs!.Value).ToList();
-            if (last.Count >= 8 && last.Average() > Config.HighLatencyMs)
-            {
-                _lastHighLatencyAlert = DateTime.Now;
-                Raise(EventKind.HighLatency, $"Latencia alta a {t.Host}: {last.Average():F0} ms (umbral {Config.HighLatencyMs:F0})", null, notify: true);
-                break;
-            }
+            if (!AlertRules.IsHighLatency(Snapshot(t), Config.HighLatencyMs, out var avg)) continue;
+            _lastHighLatencyAlert = DateTime.Now;
+            Raise(EventKind.HighLatency, $"Latencia alta a {t.Host}: {avg:F0} ms (umbral {Config.HighLatencyMs:F0})", null, notify: true);
+            break;
         }
     }
 

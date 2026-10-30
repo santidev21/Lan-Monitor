@@ -8,7 +8,7 @@ namespace LanMonitor.App.Views;
 public abstract class TabPage : View
 {
     protected MonitorService M { get; }
-    protected IApplication App { get; }
+    protected new IApplication App { get; }
 
     protected TabPage(string title, MonitorService m, IApplication app)
     {

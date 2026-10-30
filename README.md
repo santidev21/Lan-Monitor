@@ -17,10 +17,13 @@ Datos: `~/.local/share/lan-monitor/lanmonitor.db` · Config: `~/.config/lan-moni
 ## Ejecutar
     dotnet run --project src/LanMonitor.App
 
-## Binario único
-    dotnet publish src/LanMonitor.App -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -o publish
-    ./publish/lan-monitor
-    # opcional: ln -s "$PWD/publish/lan-monitor" ~/.local/bin/lan-monitor
+## Instalar como comando
+    git clone <repo> && cd Lan-Monitor
+    ./install.sh              # comando: lan-monitor
+    ./install.sh monitor-lan  # o el nombre que prefieras
+    ./install.sh --uninstall
+
+Requiere el SDK de .NET 10 solo para compilar. Instala en `~/.local/lib/lan-monitor` y crea el comando en `~/.local/bin`.
 
 ## Tests
     dotnet test

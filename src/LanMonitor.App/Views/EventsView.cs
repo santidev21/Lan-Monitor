@@ -25,7 +25,7 @@ public class EventsView : TabPage
     bool Match(NetEvent e) => _f switch
     {
         1 => e.Kind is EventKind.NewUnknownDevice or EventKind.DeviceConnected or EventKind.DeviceDisconnected,
-        2 => e.Kind is EventKind.InternetDown or EventKind.InternetRestored or EventKind.HighLatency,
+        2 => e.Kind is EventKind.InternetDown or EventKind.InternetRestored or EventKind.HighLatency or EventKind.RestartSuggested,
         3 => e.Kind == EventKind.LowSpeed,
         _ => true
     };

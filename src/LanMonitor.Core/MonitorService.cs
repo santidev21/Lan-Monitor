@@ -1,6 +1,7 @@
 using LanMonitor.Core.Alerts;
 using LanMonitor.Core.Config;
 using LanMonitor.Core.Events;
+using LanMonitor.Core.Health;
 using LanMonitor.Core.Models;
 using LanMonitor.Core.Network;
 using LanMonitor.Core.Storage;
@@ -32,6 +33,10 @@ public class MonitorService
     readonly Dictionary<string, int> _missed = new();
     readonly SemaphoreSlim _scanLock = new(1, 1);
     DateTime _lastHighLatencyAlert = DateTime.MinValue;
+    DateTime _lastHealthCheck = DateTime.MinValue;
+    DateTime _lastRestartAlert = DateTime.MinValue;
+    DateTime? _downSince;
+    public HealthReport Health { get; private set; } = new(HealthLevel.Unknown, "Recopilando datos", Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
     DateTime _lastMinuteSaved = DateTime.MinValue;
     bool _firstRunEver;
 
@@ -203,6 +208,7 @@ public class MonitorService
                 CheckInternet();
                 CheckLatency();
                 SaveMinuteAggregates();
+                CheckHealth();
                 StatusChanged?.Invoke();
             }
             catch (OperationCanceledException) { break; }
@@ -224,11 +230,11 @@ public class MonitorService
         switch (AlertRules.InternetTransition(InternetUp, ExternalSamples()))
         {
             case EventKind.InternetDown:
-                InternetUp = false;
+                InternetUp = false; _downSince = DateTime.Now;
                 Raise(EventKind.InternetDown, "Internet caído: " + Diagnose(), null, notify: true);
                 break;
             case EventKind.InternetRestored:
-                InternetUp = true;
+                InternetUp = true; _downSince = null;
                 Raise(EventKind.InternetRestored, "Internet restaurado", null, notify: true);
                 break;
         }
@@ -254,6 +260,30 @@ public class MonitorService
             Raise(EventKind.HighLatency, $"Latencia alta a {t.Host}: {avg:F0} ms (umbral {Config.HighLatencyMs:F0})", null, notify: true);
             break;
         }
+    }
+
+    /// <summary>Evalúa la salud del módem cada 30 s y avisa (máx. 1 vez cada 2 h) si conviene reiniciar.</summary>
+    void CheckHealth()
+    {
+        if (DateTime.Now - _lastHealthCheck < TimeSpan.FromSeconds(30)) return;
+        _lastHealthCheck = DateTime.Now;
+        Health = GetHealth();
+        if (Health.Level == HealthLevel.Restart && DateTime.Now - _lastRestartAlert > TimeSpan.FromHours(2))
+        {
+            _lastRestartAlert = DateTime.Now;
+            Raise(EventKind.RestartSuggested, "Conviene reiniciar el módem: " + Health.Reasons.FirstOrDefault(), null, notify: true);
+        }
+    }
+
+    public HealthReport GetHealth()
+    {
+        PingTarget? gw; PingTarget[] ext;
+        lock (Ping.Targets) { gw = Ping.Targets.FirstOrDefault(); ext = Ping.Targets.Skip(1).ToArray(); }
+        var history = ext.SelectMany(t => Db.GetMinutes(t.Host, TimeSpan.FromHours(24))).Select(m => (m.Minute, m.Avg, m.Loss)).ToList();
+        return ModemHealth.Analyze(new HealthInput(DateTime.Now, InternetUp, _downSince,
+            gw == null ? new List<PingSample>() : Snapshot(gw),
+            ext.Select(t => (IReadOnlyList<PingSample>)Snapshot(t)).ToList(),
+            Db.GetEvents(200), Db.GetSpeeds(30), Config.MinDownMbps, history));
     }
 
     void SaveMinuteAggregates()

@@ -37,7 +37,7 @@ public class SpeedResult
     public double PingMs { get; set; }
 }
 
-public enum EventKind { NewUnknownDevice, DeviceConnected, DeviceDisconnected, InternetDown, InternetRestored, HighLatency, LowSpeed }
+public enum EventKind { NewUnknownDevice, DeviceConnected, DeviceDisconnected, InternetDown, InternetRestored, HighLatency, LowSpeed, RestartSuggested }
 
 public class NetEvent
 {
@@ -56,6 +56,7 @@ public class NetEvent
         EventKind.InternetRestored => "[OK] RESTA",
         EventKind.HighLatency => "[~] LATEN ",
         EventKind.LowSpeed => "[v] VELOC ",
+        EventKind.RestartSuggested => "[R] REINIC",
         _ => "[?]"
     };
 }

@@ -14,14 +14,14 @@ public class MainWindow : Window
     readonly Label _status = new() { X = 0, Y = Pos.AnchorEnd(1), Width = Dim.Fill(), Height = 1 };
     readonly List<TabPage> _pages;
     readonly SpeedView _speed;
-    static readonly Key[] FKeys = { Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6 };
+    static readonly Key[] FKeys = { Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6, Key.F7 };
 
     public MainWindow(IApplication app, MonitorService m)
     {
         _app = app; _m = m;
         Title = "Lan-Monitor";
         _speed = new SpeedView(m, app);
-        _pages = new() { new DashboardView(m, app), new PingView(m, app), _speed, new DevicesView(m, app), new EventsView(m, app), new SettingsView(m, app) };
+        _pages = new() { new DashboardView(m, app), new PingView(m, app), _speed, new DevicesView(m, app), new EventsView(m, app), new SettingsView(m, app), new HealthView(m, app) };
         foreach (var p in _pages) _tabs.Add(p);
         Add(_tabs, _status);
 
@@ -64,11 +64,12 @@ public class MainWindow : Window
         string inet = $"Internet {(_m.InternetUp ? "●" : "✖ CAÍDO")} {(lat.HasValue ? lat.Value + "ms" : "")}".TrimEnd();
         string iface = n == null ? "sin red" : $"{n.InterfaceName} {n.LocalIp}";
         int online = devs.Count(d => d.IsOnline);
+        if (_m.Health.Level == LanMonitor.Core.Health.HealthLevel.Restart) inet += " │ ✖ REINICIAR MÓDEM";
         // De más a menos detallado; se elige el primero que cabe.
         var options = new[]
         {
-            $" Lan-Monitor │ {iface} │ {inet} │ {online} dispositivos ({unk} desconocidos) │ F1-F6 · r escanear · s speedtest · q salir",
-            $" {iface} │ {inet} │ {online} disp. ({unk} desc.) │ F1-F6 · r · s · q",
+            $" Lan-Monitor │ {iface} │ {inet} │ {online} dispositivos ({unk} desconocidos) │ F1-F7 · r escanear · s speedtest · q salir",
+            $" {iface} │ {inet} │ {online} disp. ({unk} desc.) │ F1-F7 · r · s · q",
             $" {inet} │ {online} disp. ({unk} desc.) │ q salir",
             $" {inet} │ {online}/{unk}",
         };

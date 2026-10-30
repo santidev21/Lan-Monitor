@@ -13,10 +13,11 @@ public class DashboardView : TabPage
     readonly Label _devices = new() { X = 1, Y = 7, Width = Dim.Fill(1), Height = 1 };
     readonly Label _unknown = new() { X = 1, Y = 8, Width = Dim.Fill(1), Height = 1, SchemeName = "Error" };
     readonly Label _speed = new() { X = 1, Y = 9, Width = Dim.Fill(1), Height = 1 };
-    readonly Label _events = new() { X = 1, Y = 11, Width = Dim.Fill(1), Height = Dim.Fill() };
+    readonly Label _health = new() { X = 1, Y = 10, Width = Dim.Fill(1), Height = 1 };
+    readonly Label _events = new() { X = 1, Y = 12, Width = Dim.Fill(1), Height = Dim.Fill() };
 
     public DashboardView(MonitorService m, IApplication app) : base("F1 Dashboard", m, app)
-        => Add(_info, _latency, _devices, _unknown, _speed, _events);
+        => Add(_info, _latency, _devices, _unknown, _speed, _health, _events);
 
     public override void Refresh()
     {
@@ -51,7 +52,11 @@ public class DashboardView : TabPage
         _speed.Text = Txt.FitLines(last == null ? "VELOCIDAD: sin tests aún (F3 → s para medir)"
             : $"ÚLTIMO TEST ({Ago(last.Time)}): ↓ {last.DownMbps:F1} Mbps   ↑ {last.UpMbps:F1} Mbps   ping {last.PingMs:F0} ms", W);
 
-        int evRows = Math.Clamp(H - 8 - 11 - 1, 1, 8);
+        var hr = M.Health;
+        _health.Text = Txt.Trunc("MÓDEM: " + hr.Label + (hr.Level >= LanMonitor.Core.Health.HealthLevel.Watch && hr.Reasons.Count > 0 ? " — F7 para ver por qué" : ""), W);
+        _health.SchemeName = hr.Level == LanMonitor.Core.Health.HealthLevel.Restart ? "Error" : "Base";
+
+        int evRows = Math.Clamp(H - 8 - 12 - 1, 1, 8);
         var ev = M.Db.GetEvents(evRows);
         _events.Text = Txt.FitLines("ÚLTIMAS ALERTAS\n" + (ev.Count == 0 ? "  (ninguna)" :
             string.Join("\n", ev.Select(e => $"  {e.Time:HH:mm:ss} {e.Icon} {e.Message}"))), W);

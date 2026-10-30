@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LanMonitor.App/LanMonitor.App.csproj" />
+    <Project Path="src/LanMonitor.Core/LanMonitor.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LanMonitor.Core.Tests/LanMonitor.Core.Tests.csproj" />
+  </Folder>
+</Solution>

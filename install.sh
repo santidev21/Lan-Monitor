@@ -17,8 +17,15 @@ fi
 
 command -v dotnet >/dev/null || { echo "Error: no encuentro 'dotnet' (SDK 10)."; exit 1; }
 
-echo "==> Compilando (Release, binario único)..."
-dotnet publish "$ROOT/src/LanMonitor.App" -c Release -r linux-x64 --self-contained \
+case "$(uname -m)" in
+  x86_64)        RID=linux-x64 ;;
+  aarch64|arm64) RID=linux-arm64 ;;   # Raspberry Pi 4/5 con SO de 64 bits
+  armv7l)        RID=linux-arm ;;
+  *) echo "Error: arquitectura no soportada: $(uname -m)"; exit 1 ;;
+esac
+
+echo "==> Compilando (Release, binario único, $RID)..."
+dotnet publish "$ROOT/src/LanMonitor.App" -c Release -r "$RID" --self-contained \
   -p:PublishSingleFile=true -o "$ROOT/publish" --nologo -v m -nodeReuse:false -p:UseSharedCompilation=false
 
 echo "==> Instalando en $LIB_DIR"

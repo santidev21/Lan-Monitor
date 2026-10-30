@@ -15,10 +15,11 @@ public static class WakeOnLan
         return packet;
     }
 
-    public static async Task SendAsync(string mac)
+    /// <summary>Envía el paquete mágico. Por defecto a broadcast:9; `target` permite otro destino (tests).</summary>
+    public static async Task SendAsync(string mac, IPEndPoint? target = null)
     {
         using var udp = new UdpClient { EnableBroadcast = true };
         var pkt = BuildPacket(mac);
-        await udp.SendAsync(pkt, new IPEndPoint(IPAddress.Broadcast, 9));
+        await udp.SendAsync(pkt, target ?? new IPEndPoint(IPAddress.Broadcast, 9));
     }
 }

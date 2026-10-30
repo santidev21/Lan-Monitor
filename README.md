@@ -2,6 +2,14 @@
 
 Monitor de red para terminal (TUI, .NET 10 + Terminal.Gui v2). Corre **sin sudo**.
 
+Ve qué dispositivos hay en tu red (y avisa de los desconocidos), mide ping, jitter, pérdida y velocidad, y te dice
+cuándo conviene reiniciar el módem.
+
+## Requisitos
+- Linux (x64, arm64 o arm — sirve en una Raspberry Pi como monitor siempre encendido).
+- SDK de .NET 10, solo para compilar/instalar.
+- Opcional: `notify-send` (notificaciones de escritorio) y `nmcli` (mostrar el SSID).
+
 | Tecla | Acción |
 |---|---|
 | F1–F7 | Dashboard · Ping · Velocidad · Dispositivos · Alertas · Ajustes · Salud del módem |
@@ -29,12 +37,16 @@ la retención se limpian solos.
     dotnet run --project src/LanMonitor.App
 
 ## Instalar como comando
-    git clone <repo> && cd Lan-Monitor
+    git clone https://github.com/santidev21/Lan-Monitor.git && cd Lan-Monitor
     ./install.sh              # comando: lan-monitor
     ./install.sh monitor-lan  # o el nombre que prefieras
     ./install.sh --uninstall
 
-Requiere el SDK de .NET 10 solo para compilar. Instala en `~/.local/lib/lan-monitor` y crea el comando en `~/.local/bin`.
+Detecta la arquitectura, compila un binario autocontenido en `~/.local/lib/lan-monitor` y crea el comando en
+`~/.local/bin`. Para actualizar: `git pull && ./install.sh`.
+
+    lan-monitor --help
+    lan-monitor --version
 
 ## Tests
     dotnet test

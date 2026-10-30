@@ -12,7 +12,7 @@ namespace LanMonitor.App.Views;
 
 public class DevicesView : TabPage
 {
-    readonly Label _head = new() { X = 1, Y = 0, Width = Dim.Fill(1) };
+    readonly Label _head = new() { X = 1, Y = 0, Width = Dim.Fill(1), Height = 2 };
     readonly Grid _grid = new() { X = 0, Y = 2 };
     List<Device> _shown = new();
     string _filter = ""; bool _onlyOnline;
@@ -68,23 +68,39 @@ public class DevicesView : TabPage
         _shown = q.OrderBy(x => x.IsKnown).ThenByDescending(x => x.IsOnline).ThenBy(x => IpKey(x.Ip)).ToList();
 
         int unk = all.Count(x => x.IsOnline && !x.IsKnown);
-        _head.Text = $"{all.Count(x => x.IsOnline)} online / {all.Count} registrados · {unk} desconocidos online" +
+        int w = W;
+        string hint = w >= 100 ? "r escanear · k conocido · n apodo · Enter detalle · / filtrar · o solo online · Supr olvidar"
+                    : w >= 60 ? "r escanear · k conocido · n apodo · Enter detalle · / filtrar"
+                    : "r k n Enter / o Supr";
+        _head.Text = Txt.FitLines($"{all.Count(x => x.IsOnline)} online / {all.Count} registrados · {unk} desconocidos online" +
                      (_filter != "" ? $" · filtro: \"{_filter}\"" : "") + (_onlyOnline ? " · solo online" : "") +
-                     (M.Scanning ? " · escaneando..." : "") +
-                     "\n  r escanear · k conocido · n apodo · Enter detalle · / filtrar · o solo online · Supr olvidar";
+                     (M.Scanning ? " · escaneando..." : "") + "\n  " + hint, w);
 
-        _grid.SetData(new[] { "●", "Apodo / Nombre", "IP", "MAC", "Fabricante", "Hostname", "Estado", "Primera vez", "Última vez" },
-            _shown.Select(d => new[]
-            {
-                d.IsOnline ? "●" : "○",
-                (d.IsSelf ? "[yo] " : d.IsGateway ? "[router] " : "") + d.DisplayName,
-                d.Ip, d.Mac + (d.IsRandomMac ? " ⚑" : ""), Trunc(d.Vendor, 24), Trunc(d.Hostname, 24),
-                d.IsKnown ? "Conocido" : "⚠ DESCONOCIDO",
-                d.FirstSeen.ToString("MM-dd HH:mm"), d.IsOnline ? "ahora" : d.LastSeen.ToString("MM-dd HH:mm")
-            }).ToList());
+        // Columnas por prioridad: las de menor prioridad se ocultan cuando la terminal es angosta.
+        // Fixed = ancho fijo; Weight = reparto proporcional del espacio sobrante.
+        var cols = new List<Col>
+        {
+            new("●", d => d.IsOnline ? "●" : "○", 1, 0),
+            new("Apodo / Nombre", d => (d.IsSelf ? "[yo] " : d.IsGateway ? "[router] " : "") + d.DisplayName, 0, 4),
+            new("IP", d => d.Ip, 13, 0),
+        };
+        if (w >= 66) cols.Add(new("MAC", d => d.Mac + (d.IsRandomMac ? " ⚑" : ""), 19, 0));
+        if (w >= 88) cols.Add(new("Fabricante", d => d.Vendor, 0, 3));
+        if (w >= 112) cols.Add(new("Hostname", d => d.Hostname, 0, 2));
+        cols.Add(new("Estado", d => d.IsKnown ? "Conocido" : "⚠ DESCONOCIDO", 13, 0));
+        if (w >= 140) cols.Add(new("Primera vez", d => d.FirstSeen.ToString("MM-dd HH:mm"), 11, 0));
+        if (w >= 100) cols.Add(new("Última vez", d => d.IsOnline ? "ahora" : d.LastSeen.ToString("MM-dd HH:mm"), 11, 0));
+
+        int free = w - cols.Sum(c => c.Fixed) - cols.Count;
+        int totalWeight = cols.Sum(c => c.Weight);
+        var widths = cols.Select(c => c.Fixed > 0 ? c.Fixed : Math.Max(8, free * c.Weight / Math.Max(1, totalWeight))).ToArray();
+
+        _grid.SetData(cols.Select(c => c.Head).ToArray(),
+            _shown.Select(d => cols.Select((c, i) => Txt.Trunc(c.Get(d), widths[i])).ToArray()).ToList());
     }
 
-    static string Trunc(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+    record Col(string Head, Func<Device, string> Get, int Fixed, int Weight);
+
     static long IpKey(string ip) => System.Net.IPAddress.TryParse(ip, out var a) ? a.GetAddressBytes().Aggregate(0L, (x, b) => x * 256 + b) : 0;
 
     // ------------------------------------------------------------ Detalle
@@ -115,9 +131,10 @@ public class DevicesView : TabPage
             foreach (var h in hist) sb.AppendLine($"  {h.Time:MM-dd HH:mm:ss}  {(h.Online ? "conectó" : "se desconectó")}");
             if (hist.Count == 0) sb.AppendLine("  (sin registros)");
 
-            var dlg = new Dialog { Title = "Detalle del dispositivo", Width = 78 };
-            dlg.Add(new Label { Text = sb.ToString(), X = 1, Y = 0 });
-            foreach (var b in new[] { "Cerrar", "Notas", "Wake-on-LAN", "Puertos", d.IsKnown ? "Marcar desconocido" : "Marcar conocido", "Apodo" })
+            int dw = Math.Max(34, Math.Min(80, App.Screen.Width - 6));
+            var dlg = new Dialog { Title = "Detalle del dispositivo", Width = dw };
+            dlg.Add(new Label { Text = Txt.FitLines(sb.ToString(), dw - 4), X = 1, Y = 0 });
+            foreach (var b in new[] { "Cerrar", "Notas", "WoL", "Puertos", d.IsKnown ? "Desconocer" : "Conocer", "Apodo" })
                 dlg.AddButton(new Button { Text = b });
             App.Run(dlg);
             int r = dlg.Result ?? 0; dlg.Dispose();

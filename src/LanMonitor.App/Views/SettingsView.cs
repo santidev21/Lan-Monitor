@@ -79,7 +79,7 @@ public class SettingsView : TabPage
 
     public override void Refresh()
     {
-        _head.Text = $"Enter = editar · e = exportar CSV\nConfig: {AppConfig.ConfigPath}\nDatos : {AppConfig.DbPath}   {_msg}";
-        _grid.SetData(new[] { "Ajuste", "Valor" }, _items.Select(s => new[] { s.Name, s.Get() }).ToList());
+        _head.Text = Txt.FitLines($"Enter = editar · e = exportar CSV   {_msg}\nConfig: {Txt.Home(AppConfig.ConfigPath)}\nDatos : {Txt.Home(AppConfig.DbPath)}", W);
+        _grid.SetData(new[] { "Ajuste", "Valor" }, _items.Select(s => new[] { Txt.Trunc(s.Name, Math.Max(12, W / 2)), Txt.Trunc(s.Get(), Math.Max(8, W / 2 - 4)) }).ToList());
     }
 }

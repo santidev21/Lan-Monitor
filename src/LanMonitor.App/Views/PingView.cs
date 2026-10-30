@@ -26,11 +26,14 @@ public class PingView : TabPage
     public override void Refresh()
     {
         var (span, name) = Windows[_win];
-        _head.Text = $"Ventana: {name}  (w = cambiar)   Diagnóstico: {(M.InternetUp ? "todo bien" : M.Diagnose())}";
+        _head.Text = Txt.Trunc($"Ventana: {name} (w = cambiar)   Diagnóstico: {(M.InternetUp ? "todo bien" : M.Diagnose())}", W);
         PingTarget[] ts; lock (M.Ping.Targets) ts = M.Ping.Targets.ToArray();
 
         var rows = new List<string[]>(); var sb = new System.Text.StringBuilder();
-        int width = Math.Max(20, (Frame.Width > 0 ? Frame.Width : 100) - 10);
+        int width = Math.Max(16, W - 8);
+        // Altura de cada gráfico según el espacio libre (título + fila de pérdidas = 2 filas extra).
+        int gridRows = Math.Min(ts.Length + 3, 8);
+        int chartH = Math.Clamp((H - 8 - (1 + gridRows)) / Math.Max(1, ts.Length) - 2, 1, 8);
         foreach (var t in ts)
         {
             var w = PingMonitor.Window(t, span);
@@ -38,12 +41,12 @@ public class PingView : TabPage
             string F(double? v) => v.HasValue ? $"{v.Value:F0} ms" : "-";
             rows.Add(new[] { t.Label == t.Host ? t.Host : $"{t.Label} ({t.Host})", F(st.Current), F(st.Min), F(st.Avg), F(st.Max), $"{st.Jitter:F1} ms", $"{st.LossPercent:F1}%" });
             sb.AppendLine(t.Label == t.Host ? t.Host : $"{t.Label} — {t.Host}");
-            foreach (var line in Charts.Columns(w.Select(s => s.RttMs).ToList(), width, 3, null)) sb.AppendLine(line);
+            foreach (var line in Charts.Columns(w.Select(s => s.RttMs).ToList(), width, chartH, null)) sb.AppendLine(line);
         }
         int gridH = Math.Min(ts.Length + 3, 8);
         _grid.Height = gridH;
         _charts.Y = 1 + gridH;
         _grid.SetData(new[] { "Objetivo", "Actual", "Mín", "Prom", "Máx", "Jitter", "Pérdida" }, rows);
-        _charts.Text = sb.ToString();
+        _charts.Text = Txt.FitLines(sb.ToString(), W);
     }
 }

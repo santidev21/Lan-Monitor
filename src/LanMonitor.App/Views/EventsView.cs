@@ -35,6 +35,6 @@ public class EventsView : TabPage
         _head.Text = $"Filtro: {Filters[_f]}  (f = cambiar)";
         var ev = M.Db.GetEvents(300).Where(Match).ToList();
         _grid.SetData(new[] { "Hora", "Tipo", "Mensaje" },
-            ev.Select(e => new[] { e.Time.ToString("MM-dd HH:mm:ss"), e.Icon, e.Message }).ToList());
+            ev.Select(e => new[] { e.Time.ToString("MM-dd HH:mm:ss"), e.Icon, Txt.Trunc(e.Message, Math.Max(10, W - 32)) }).ToList());
     }
 }

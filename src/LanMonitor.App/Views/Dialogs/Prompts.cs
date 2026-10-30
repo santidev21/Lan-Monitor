@@ -9,7 +9,7 @@ public static class Prompts
     /// <summary>Pide un texto. Devuelve null si se cancela.</summary>
     public static string? Input(IApplication app, string title, string label, string initial = "")
     {
-        var d = new Dialog { Title = title, Width = 60 };
+        var d = new Dialog { Title = title, Width = Math.Min(60, Math.Max(30, app.Screen.Width - 4)) };
         var lbl = new Label { Text = label, X = 1, Y = 0 };
         var tf = new TextField { Text = initial, X = 1, Y = 1, Width = Dim.Fill(1) };
         d.Add(lbl, tf);

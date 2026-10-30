@@ -42,18 +42,22 @@ public class SpeedView : TabPage
     public override void Refresh()
     {
         if (M.SpeedRunning)
-            _live.Text = $"Midiendo... fase: {_phase}\n{Charts.Bar(_frac, 40)}  {_mbps,7:F1} Mbps\n(x = cancelar)";
+            _live.Text = $"Midiendo... fase: {_phase}\n{Charts.Bar(_frac, Math.Clamp(W - 16, 10, 40))}  {_mbps,7:F1} Mbps\n(x = cancelar)";
         else
         {
             var last = M.Db.GetSpeeds(1).FirstOrDefault();
             _live.Text = (last == null ? "Sin tests todavía." : $"Último: ↓ {last.DownMbps:F1} Mbps   ↑ {last.UpMbps:F1} Mbps   ping {last.PingMs:F0} ms  ({Ago(last.Time)})")
                 + "\nPresiona  s  para iniciar un test de velocidad (Cloudflare)." + (_error != "" ? "\n" + _error : "");
+            _live.Text = Txt.FitLines(_live.Text, W);
         }
 
         var hist = M.Db.GetSpeeds(30);
-        int w = Math.Max(20, (Frame.Width > 0 ? Frame.Width : 100) - 12);
+        int w = Math.Max(16, W - 8);
+        int ch = H >= 34 ? 6 : H >= 26 ? 4 : 2;
+        _chart.Height = ch + 3;
+        _grid.Y = 5 + ch + 3;
         var down = hist.AsEnumerable().Reverse().Select(h => (double?)h.DownMbps).ToList();
-        _chart.Text = "Descarga (Mbps) — últimos tests\n" + string.Join("\n", Charts.Columns(down, Math.Min(w, Math.Max(down.Count * 2, 10)), 6, null, "Mbps"));
+        _chart.Text = "Descarga (Mbps) — últimos tests\n" + string.Join("\n", Charts.Columns(down, Math.Min(w, Math.Max(down.Count * 2, 10)), ch, null, "Mbps"));
         _grid.SetData(new[] { "Fecha", "↓ Mbps", "↑ Mbps", "Ping ms" },
             hist.Select(h => new[] { h.Time.ToString("yyyy-MM-dd HH:mm"), h.DownMbps.ToString("F1"), h.UpMbps.ToString("F1"), h.PingMs.ToString("F0") }).ToList());
     }

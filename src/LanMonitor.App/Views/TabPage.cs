@@ -16,6 +16,10 @@ public abstract class TabPage : View
         Width = Dim.Fill(); Height = Dim.Fill(); CanFocus = true;
     }
 
+    /// <summary>Ancho/alto útiles según el tamaño real de la terminal (descontando bordes de ventana y pestañas).</summary>
+    protected int W => Math.Max(36, App.Screen.Width - 6);
+    protected int H => Math.Max(12, App.Screen.Height);
+
     public abstract void Refresh();
 
     /// <summary>Atajo de teclado propio de la pestaña. Devuelve true si lo consumió.</summary>

@@ -60,8 +60,19 @@ public class MainWindow : Window
         var gw = _m.Ping.Targets.Count > 1 ? _m.Ping.Targets[1] : null;
         double? lat = null;
         if (gw != null) lock (gw.Samples) lat = gw.Samples.LastOrDefault()?.RttMs;
-        _status.Text = $" Lan-Monitor │ {(n == null ? "sin red" : $"{n.InterfaceName} {n.LocalIp}")} │ Internet {(_m.InternetUp ? "●" : "✖ CAÍDO")} {(lat.HasValue ? lat.Value + "ms" : "")}" +
-                       $" │ {devs.Count(d => d.IsOnline)} dispositivos ({unk} desconocidos) │ F1-F6 · r escanear · s speedtest · q salir";
+        int w = Math.Max(20, _app.Screen.Width - 4);
+        string inet = $"Internet {(_m.InternetUp ? "●" : "✖ CAÍDO")} {(lat.HasValue ? lat.Value + "ms" : "")}".TrimEnd();
+        string iface = n == null ? "sin red" : $"{n.InterfaceName} {n.LocalIp}";
+        int online = devs.Count(d => d.IsOnline);
+        // De más a menos detallado; se elige el primero que cabe.
+        var options = new[]
+        {
+            $" Lan-Monitor │ {iface} │ {inet} │ {online} dispositivos ({unk} desconocidos) │ F1-F6 · r escanear · s speedtest · q salir",
+            $" {iface} │ {inet} │ {online} disp. ({unk} desc.) │ F1-F6 · r · s · q",
+            $" {inet} │ {online} disp. ({unk} desc.) │ q salir",
+            $" {inet} │ {online}/{unk}",
+        };
+        _status.Text = options.FirstOrDefault(o => o.Length <= w) ?? Txt.Trunc(options[^1], w);
         SetNeedsDraw();
     }
 }

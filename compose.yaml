@@ -1,0 +1,14 @@
+# Uso: docker compose run --rm lan-monitor
+services:
+  lan-monitor:
+    build: .
+    image: lan-monitor
+    network_mode: host
+    stdin_open: true
+    tty: true
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - lan-monitor-data:/data
+
+volumes:
+  lan-monitor-data:

@@ -50,5 +50,15 @@ Detecta la arquitectura, compila un binario autocontenido en `~/.local/lib/lan-m
     lan-monitor --help
     lan-monitor --version
 
+## Docker
+Sin instalar .NET, un solo comando (la primera vez compila la imagen):
+
+    git clone https://github.com/santidev21/Lan-Monitor.git && cd Lan-Monitor
+    docker compose run --rm lan-monitor
+
+Usa red `host` para ver tu red local (por eso solo sirve con Docker en Linux, no en Docker Desktop de Mac/Windows).
+Los datos y la config quedan en un volumen de Docker. Dentro del contenedor no hay notificaciones de escritorio ni SSID.
+Tras un `git pull`, recompila con `docker compose build`.
+
 ## Tests
     dotnet test
